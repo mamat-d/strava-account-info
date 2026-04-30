@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strava-export"
+version = "1.0.0"
+description = "Export all your Strava data locally — activities, GPS streams, heart rate, power, gear and more."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "requests==2.33.1",
+    "python-dotenv==1.2.2",
+    "gpxpy==1.6.2",
+    "pandas==3.0.2",
+    "tqdm==4.67.3",
+]
