@@ -63,7 +63,15 @@ class StravaClient:
                 time.sleep(wait)
                 continue
 
-            # Skip deleted/private activities
+            # Skip deleted/private activities (only for sub-resources, not core endpoints)
+            core_paths = ("/athlete", "/gear/", "/athlete/zones", "/athletes/")
+            is_core = any(path.startswith(p) for p in core_paths)
+            if resp.status_code == 403 and is_core:
+                raise RuntimeError(
+                    f"Access denied on {path} (HTTP 403).\n"
+                    "→ Re-run: python auth.py\n"
+                    "  Make sure to approve ALL scopes (activity:read_all, profile:read_all)."
+                )
             if resp.status_code in (404, 403):
                 return None
 

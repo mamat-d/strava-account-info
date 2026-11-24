@@ -11,6 +11,7 @@ import os
 import json
 import csv
 import time
+import zipfile
 from pathlib import Path
 from datetime import datetime
 
@@ -157,8 +158,10 @@ def export_activity_details(client: StravaClient, activities: list[dict]):
         detail_dir = EXPORT_DIR / "activities" / str(aid)
 
         # Incremental: check if already downloaded
-        streams_file = detail_dir / "streams.json"
-        if streams_file.exists():
+        # Manual activities have no streams, so detail.json is enough for them
+        needs_streams = INCLUDE_STREAMS and not activity.get("manual")
+        done_file = detail_dir / ("streams.json" if needs_streams else "detail.json")
+        if done_file.exists():
             already_downloaded += 1
             continue
 
@@ -174,7 +177,7 @@ def export_activity_details(client: StravaClient, activities: list[dict]):
             pass
 
         streams = {}
-        if INCLUDE_STREAMS:
+        if needs_streams:
             try:
                 raw = client.get(f"/activities/{aid}/streams", keys=STREAM_TYPES, key_by_type=True)
                 if raw:
@@ -216,6 +219,22 @@ def write_summary(activities: list[dict]):
     return summary
 
 
+def zip_export(export_dir: Path) -> Path:
+    """Zip the entire export folder next to it."""
+    print("\n[+] Zipping export folder...")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    zip_path = export_dir.parent / f"strava_export_{timestamp}.zip"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        for file in sorted(export_dir.rglob("*")):
+            if file.is_file():
+                zf.write(file, file.relative_to(export_dir.parent))
+
+    size_mb = zip_path.stat().st_size / 1_000_000
+    print(f"      {zip_path.name} ({size_mb:.1f} MB)")
+    return zip_path
+
+
 def main():
     print("=" * 50)
     print("  Strava Full Export")
@@ -233,6 +252,7 @@ def main():
     export_activity_details(client, activities)
 
     summary = write_summary(activities)
+    zip_path = zip_export(EXPORT_DIR)
 
     print("\n" + "=" * 50)
     print("  Export complete!")
@@ -240,7 +260,7 @@ def main():
     print(f"  Distance   : {summary['total_distance_km']} km")
     print(f"  Elevation  : {summary['total_elevation_m']} m")
     print(f"  Moving time: {summary['total_moving_time_h']} h")
-    print(f"  Saved to   : {EXPORT_DIR.resolve()}")
+    print(f"  Archive    : {zip_path}")
     print("=" * 50)
 
 

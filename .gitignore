@@ -3,6 +3,7 @@
 
 # Export data
 export/
+strava_export_*.zip
 
 # Python
 __pycache__/
